@@ -23,13 +23,14 @@ var skipReq = 0;
 var voiceChannel = null;
 var skippers = [];
 var volume = 0;
-
+var defaultVolume = 20/100;
 
 bot.on('message', message =>{
   const member = message.member;
   const mess = message.content.toLowerCase();
   const args = message.content.split(' ').slice(1).join(" ");
 
+  //Command to queue songs
   if(mess.startsWith(prefix + "q")){
      if(member.voiceChannel){
         if(queue.length > 0 || isPlaying){
@@ -59,11 +60,13 @@ bot.on('message', message =>{
         message.reply('You must be in a voice channel!');
       }
   }
+
+  //Command to skip songs
   else if(mess.startsWith(prefix + "skip")){
     if(skippers.indexOf(message.author.id) === -1){
       skippers.push(message.author.id);
       skipReq++;
-      if(skipReq >= (Math.ceil(voiceChannel.members.size) -1) / 2){
+      if(skipReq >= (Math.ceil(voiceChannel.members.size) -1) / 2){ //-1 because the bot shouldn't be included in the votes
         skipSong(message);
         message.reply(" Skip has been accepted, skipping song!");
       }
@@ -76,24 +79,30 @@ bot.on('message', message =>{
       message.reply("You already voted to skip");
     }
   }
+
+  //Pauses music
   else if(mess.startsWith(prefix + "pause")){
     pauseMusic(message);
   }
+
+  //Resumes music
   else if(mess.startsWith(prefix + "resume")){
     resumeMusic(message);
   }
+
+  //Changes the volume of the song
   else if(mess.startsWith(prefix + "vol")){
     if(args < 0 || args > 100){
       message.reply("Please enter a value from 0 to 100!");
     }
     else{
-      var temp;
-      volume = args/100;
-      temp = volume;
+      volume = args/100; //The parameter takes values from 0 to 1, makes it easier for the user
       changeVolume(volume);
-      message.reply("Volume set to: " + temp);
+      message.reply("Volume set to: " + (volume*100) + "%");
     }
   }
+
+  //Kicks the bot from the voice channel
   else if(mess.startsWith(prefix + "leave")){
       queue = [];
       queueList = [];
@@ -101,12 +110,12 @@ bot.on('message', message =>{
       voiceChannel.leave();
     }
 
-  }
+    //Shows the queue list
   else if(mess.startsWith(prefix + "list")){
     var format = "```";
     for(var i = 0; i < queueList.length; i++){
       var temp = (i + 1) + ". " + queueList[i] + (i === 0 ? " **(Current Song)**" : "") + "\n";
-      if((format + temp).length <= 2000 - 3){
+      if((format + temp).length <= 2000 - 3){ //-3 because there are three ticks ```
         format += temp;
       }
       else{
@@ -118,8 +127,11 @@ bot.on('message', message =>{
     format += "```";
     message.channel.send(format);
   }
+
+  //PM's all of the bot's commands
   else if(mess.startsWith(prefix + "commands")){
-    message.author.sendMessage("```");
+    message.author.sendMessage("```\nList of commands\n\n!q => queues music\n!skip => skips song\n!vol => changes volume\n"
+    + "!pause => pauses music\n!resume => resumes music\n!list => shows the queue\n```");
     }
 });
 
@@ -138,6 +150,7 @@ function playMusic(id, message){
     skippers = [];
 
     dispatcher = connection.playStream(stream);
+    dispatcher.setVolume(defaultVolume); //Defaults to 20%, personal preference to avoid ear damage
     dispatcher.on('end', ()=>{
       skipReq = 0;
       skippers = [];
