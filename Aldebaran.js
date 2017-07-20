@@ -16,11 +16,14 @@ const prefix = config.prefix;
 const token = config.botToken;
 
 var queue = [];
+var queueList = [];
 var isPlaying = false;
 var dispatcher = null;
 var skipReq = 0;
 var voiceChannel = null;
 var skippers = [];
+var volume = 0;
+
 
 bot.on('message', message =>{
   const member = message.member;
@@ -28,26 +31,33 @@ bot.on('message', message =>{
   const args = message.content.split(' ').slice(1).join(" ");
 
   if(mess.startsWith(prefix + "q")){
-    if(queue.length > 0 || isPlaying){
-      getID(args, id =>{
-        addToQueue(id);
-        fetchVideoInfo(id, (err, videoInfo)=>{
-          if(err) throw new Error(err);
-          message.reply(" Added to queue: **" + videoInfo.title + "**");
-        });
-      });
-    }
-    else{
-      isPlaying = true;
-      getID(args, id=>{
-        queue.push("placeholder");
-        playMusic(id, message);
-        fetchVideoInfo(id, (err, videoInfo)=>{
-          if(err) throw new Error(err);
-          message.reply(" Now playing: **" + videoInfo.title + "**");
-        });
-      });
-    }
+     if(member.voiceChannel){
+        if(queue.length > 0 || isPlaying){
+          getID(args, id =>{
+            addToQueue(id);
+            fetchVideoInfo(id, (err, videoInfo)=>{
+              if(err) throw new Error(err);
+              message.reply(" Added to queue: **" + videoInfo.title + "**");
+              queueList.push(videoInfo.title);
+            });
+          });
+        }
+        else{
+          isPlaying = true;
+          getID(args, id=>{
+            queue.push("placeholder");
+            playMusic(id, message);
+            fetchVideoInfo(id, (err, videoInfo)=>{
+              if(err) throw new Error(err);
+              message.reply(" Now playing: **" + videoInfo.title + "**");
+              queueList.push(videoInfo.title);
+            });
+          });
+        }
+      }
+      else{
+        message.reply('You must be in a voice channel!');
+      }
   }
   else if(mess.startsWith(prefix + "skip")){
     if(skippers.indexOf(message.author.id) === -1){
@@ -59,14 +69,58 @@ bot.on('message', message =>{
       }
       else{
         message.reply(" Skip has been accepted, you need **"
-        + (Math.ceil(voiceChannel.members.size) -1) / 2 - skipReq + "** more skip votes.");
+        + ((Math.ceil((voiceChannel.members.size - 1) / 2)) - skipReq) + "** more skip votes.");
       }
     }
     else{
       message.reply("You already voted to skip");
     }
   }
+  else if(mess.startsWith(prefix + "pause")){
+    pauseMusic(message);
+  }
+  else if(mess.startsWith(prefix + "resume")){
+    resumeMusic(message);
+  }
+  else if(mess.startsWith(prefix + "vol")){
+    if(args < 0 || args > 100){
+      message.reply("Please enter a value from 0 to 100!");
+    }
+    else{
+      var temp;
+      volume = args/100;
+      temp = volume;
+      changeVolume(volume);
+      message.reply("Volume set to: " + temp);
+    }
+  }
+  else if(mess.startsWith(prefix + "leave")){
+      queue = [];
+      queueList = [];
+      dispatcher.end();
+      voiceChannel.leave();
+    }
 
+  }
+  else if(mess.startsWith(prefix + "list")){
+    var format = "```";
+    for(var i = 0; i < queueList.length; i++){
+      var temp = (i + 1) + ". " + queueList[i] + (i === 0 ? " **(Current Song)**" : "") + "\n";
+      if((format + temp).length <= 2000 - 3){
+        format += temp;
+      }
+      else{
+        format += "```";
+        message.channel.send(format);
+        format = "```";
+      }
+    }
+    format += "```";
+    message.channel.send(format);
+  }
+  else if(mess.startsWith(prefix + "commands")){
+    message.author.sendMessage("```");
+    }
 });
 
 bot.on('ready', () => {
@@ -88,12 +142,17 @@ function playMusic(id, message){
       skipReq = 0;
       skippers = [];
       queue.shift();
+      queueList.shift();
       if(queue.length === 0){
         queue = [];
+        queueList = [];
         isPlaying = false;
       }
       else{
-        playMusic(queue[0], message);
+        setTimeout( ()=> {
+            playMusic(queue[0], message);
+        }, 500);
+
       }
       });
   });
@@ -101,6 +160,18 @@ function playMusic(id, message){
 
 function skipSong(message){
   dispatcher.end();
+}
+
+function pauseMusic(message){
+  dispatcher.pause();
+}
+
+function resumeMusic(message){
+  dispatcher.resume();
+}
+
+function changeVolume(message){
+  dispatcher.setVolume(message);
 }
 
 function isYoutube(str){
