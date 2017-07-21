@@ -7,6 +7,7 @@ const request = require('request');
 const fs = require('fs');
 const getYoutubeID = require('get-youtube-id');
 const fetchVideoInfo = require('youtube-info');
+const osu = require('node-osu');
 
 var config = JSON.parse(fs.readFileSync('settings.json'));
 
@@ -14,6 +15,12 @@ const ytAPIkey = config.ytAPIkey;
 const botController = config.botController;
 const prefix = config.prefix;
 const token = config.botToken;
+const osuAPIkey = config.osuAPIkey;
+
+var osuApi = new osu.Api(osuAPIkey, {
+    notFoundAsError: true,
+    completeScores: false
+})
 
 var queue = [];
 var queueList = [];
@@ -31,15 +38,15 @@ bot.on('message', message =>{
   const args = message.content.split(' ').slice(1).join(" ");
 
   //Command to queue songs
-  if(mess.startsWith(prefix + "q")){
+  if(mess.startsWith(prefix + "play")){
      if(member.voiceChannel){
         if(queue.length > 0 || isPlaying){
           getID(args, id =>{
             addToQueue(id);
             fetchVideoInfo(id, (err, videoInfo)=>{
               if(err) throw new Error(err);
-              message.reply(" Added to queue: **" + videoInfo.title + "**");
-              queueList.push(videoInfo.title);
+                message.reply(" Added to queue: **" + videoInfo.title + "**");
+                queueList.push(videoInfo.title);
             });
           });
         }
@@ -50,8 +57,8 @@ bot.on('message', message =>{
             playMusic(id, message);
             fetchVideoInfo(id, (err, videoInfo)=>{
               if(err) throw new Error(err);
-              message.reply(" Now playing: **" + videoInfo.title + "**");
-              queueList.push(videoInfo.title);
+                message.reply(" Added to queue: **" + videoInfo.title + "**");
+                queueList.push(videoInfo.title);
             });
           });
         }
@@ -128,11 +135,24 @@ bot.on('message', message =>{
     message.channel.send(format);
   }
 
+  //Displays osu stats of the user
+  else if(mess.startsWith(prefix + "osu")){
+    osuApi.getUser({u: args}).then(user => {
+    message.channel.send("\n```Name: " + user.name + "\n" + "Country: "
+    + user.country + "\n" + "Level: " + user.level + "\n" + "Accuracy: " + user.accuracyFormatted + "\n" + "SS: " + user.counts.SS + "\n"
+    + "S: " + user.counts.S + "\n" + "A: "
+    + user.counts.A
+    + "\n" + "Plays: " + user.counts.plays
+    + "\nPP: " + user.pp.raw + "\n" + "Rank: " + user.pp.rank + "\n" + "Country Rank: " + user.pp.countryRank + "```");
+    });
+
+  }
   //PM's all of the bot's commands
   else if(mess.startsWith(prefix + "commands")){
-    message.author.sendMessage("```\nList of commands\n\n!q => queues music\n!skip => skips song\n!vol => changes volume\n"
-    + "!pause => pauses music\n!resume => resumes music\n!list => shows the queue\n```");
+    message.author.send("```\nList of commands\n\n!play => queues music\n!skip => skips song\n!vol => changes volume\n"
+    + "!pause => pauses music\n!resume => resumes music\n!list => shows the queue\n!osu => shows osu stats of the user```");
     }
+
 });
 
 bot.on('ready', () => {
