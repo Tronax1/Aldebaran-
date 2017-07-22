@@ -19,6 +19,7 @@ const token = config.botToken;
 const osuAPIkey = config.osuAPIkey;
 const oxfordID = config.oxfordID;
 const oxfordAPIkey = config.oxfordAPIkey;
+const usernameID = config.usernameID;
 
 var osuApi = new osu.Api(osuAPIkey, {
     notFoundAsError: true,
@@ -78,7 +79,7 @@ bot.on('message', message =>{
     if(skippers.indexOf(message.author.id) === -1){
       skippers.push(message.author.id);
       skipReq++;
-      if(skipReq >= (Math.ceil(voiceChannel.members.size) -1) / 2){ //-1 because the bot shouldn't be included in the votes
+      if(skipReq >= Math.ceil(voiceChannel.members.size - 1)  / 2 || message.author.id === usernameID){ //-1 because the bot shouldn't be included in the votes
         skipSong(message);
         message.reply(" Skip has been accepted, skipping song!");
       }
