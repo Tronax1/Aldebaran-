@@ -23,6 +23,7 @@
     "get-youtube-id": "^1.0.0",
     "node-osu": "^1.2.0",
     "opusscript": "0.0.3",
+    "oxford-dictionary-api": "^1.0.1",
     "request": "^2.81.0",
     "superagent": "^3.5.2",
     "youtube-info": "^1.1.1",

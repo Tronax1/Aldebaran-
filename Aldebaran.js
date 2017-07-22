@@ -8,6 +8,7 @@ const fs = require('fs');
 const getYoutubeID = require('get-youtube-id');
 const fetchVideoInfo = require('youtube-info');
 const osu = require('node-osu');
+const Dictionary = require('oxford-dictionary-api');
 
 var config = JSON.parse(fs.readFileSync('settings.json'));
 
@@ -16,11 +17,15 @@ const botController = config.botController;
 const prefix = config.prefix;
 const token = config.botToken;
 const osuAPIkey = config.osuAPIkey;
+const oxfordID = config.oxfordID;
+const oxfordAPIkey = config.oxfordAPIkey;
 
 var osuApi = new osu.Api(osuAPIkey, {
     notFoundAsError: true,
     completeScores: false
 })
+
+var dict = new Dictionary(oxfordID, oxfordAPIkey);
 
 var queue = [];
 var queueList = [];
@@ -47,6 +52,7 @@ bot.on('message', message =>{
               if(err) throw new Error(err);
                 message.reply(" Added to queue: **" + videoInfo.title + "**");
                 queueList.push(videoInfo.title);
+                bot.user.setPresence({ status: 'online', game: { name: videoInfo.title } });
             });
           });
         }
@@ -59,6 +65,7 @@ bot.on('message', message =>{
               if(err) throw new Error(err);
                 message.reply(" Added to queue: **" + videoInfo.title + "**");
                 queueList.push(videoInfo.title);
+                bot.user.setPresence({ status: 'online', game: { name: videoInfo.title } });
             });
           });
         }
@@ -99,14 +106,19 @@ bot.on('message', message =>{
 
   //Changes the volume of the song
   else if(mess.startsWith(prefix + "vol")){
-    if(args < 0 || args > 100){
-      message.reply("Please enter a value from 0 to 100!");
-    }
-    else{
-      volume = args/100; //The parameter takes values from 0 to 1, makes it easier for the user
-      changeVolume(volume);
-      message.reply("Volume set to: " + (volume*100) + "%");
-    }
+      if(Number.isNaN(Number.parseInt(args, 10))){
+          message.reply("That is not a valid number!");
+      }
+      else{
+        if(args < 0 || args > 100){
+         message.reply("Please enter a value from 0 to 100!");
+         }
+        else{
+         volume = args/100; //The parameter takes values from 0 to 1, makes it easier for the user
+         changeVolume(volume);
+         message.reply("Volume set to: " + (volume*100) + "%");
+       }
+      }
   }
 
   //Kicks the bot from the voice channel
@@ -114,6 +126,7 @@ bot.on('message', message =>{
       queue = [];
       queueList = [];
       dispatcher.end();
+      bot.user.setPresence({ status: 'online', game: { name: "Type !commands for commands" } });
       voiceChannel.leave();
     }
 
@@ -137,26 +150,43 @@ bot.on('message', message =>{
 
   //Displays osu stats of the user
   else if(mess.startsWith(prefix + "osu")){
-    osuApi.getUser({u: args}).then(user => {
-    message.channel.send("\n```Name: " + user.name + "\n" + "Country: "
-    + user.country + "\n" + "Level: " + user.level + "\n" + "Accuracy: " + user.accuracyFormatted + "\n" + "SS: " + user.counts.SS + "\n"
-    + "S: " + user.counts.S + "\n" + "A: "
-    + user.counts.A
-    + "\n" + "Plays: " + user.counts.plays
-    + "\nPP: " + user.pp.raw + "\n" + "Rank: " + user.pp.rank + "\n" + "Country Rank: " + user.pp.countryRank + "```");
-    });
+      osuApi.getUser({u: args}).then(user => {
+      message.channel.send("\n```Name: " + user.name + "\n" + "Country: "
+      + user.country + "\n" + "Level: " + user.level + "\n" + "Accuracy: " + user.accuracyFormatted + "\n" + "SS: " + user.counts.SS + "\n"
+      + "S: " + user.counts.S + "\n" + "A: "
+      + user.counts.A
+      + "\n" + "Plays: " + user.counts.plays
+      + "\nPP: " + user.pp.raw + "\n" + "Rank: " + user.pp.rank + "\n" + "Country Rank: " + user.pp.countryRank + "```");
+      });
+    }
 
-  }
+    //Looks for the definition of a word
+    else if(mess.startsWith(prefix + "define")){
+        var word = args.replace(/\s+/g, '');
+        dict.find(word, (error,data) =>{
+          if(error) return message.channel.send(error);
+          message.channel.send("```Definition:\n\n"
+          + "1. "+ data.results[0].lexicalEntries[0].entries[0].senses[0].definitions[0] + "\n\n"
+          + "Pronunciation: ```");
+        message.channel.send("", {
+            files:[
+              data.results[0].lexicalEntries[0].pronunciations[0].audioFile
+            ]
+          });
+        });
+      }
+
   //PM's all of the bot's commands
   else if(mess.startsWith(prefix + "commands")){
     message.author.send("```\nList of commands\n\n!play => queues music\n!skip => skips song\n!vol => changes volume\n"
-    + "!pause => pauses music\n!resume => resumes music\n!list => shows the queue\n!osu => shows osu stats of the user```");
+    + "!pause => pauses music\n!resume => resumes music\n!list => shows the queue\n!osu => shows osu stats of the user\n!define => defines a word thats in english```");
     }
 
 });
 
 bot.on('ready', () => {
   console.log('I am ready!');
+  bot.user.setPresence({ status: 'online', game: { name: "Type !commands for commands" } });
 });
 
 function playMusic(id, message){
