@@ -52,7 +52,6 @@ bot.on('message', message =>{
               if(err) throw new Error(err);
                 message.reply(" Added to queue: **" + videoInfo.title + "**");
                 queueList.push(videoInfo.title);
-                bot.user.setPresence({ status: 'online', game: { name: videoInfo.title } });
             });
           });
         }
@@ -65,7 +64,6 @@ bot.on('message', message =>{
               if(err) throw new Error(err);
                 message.reply(" Added to queue: **" + videoInfo.title + "**");
                 queueList.push(videoInfo.title);
-                bot.user.setPresence({ status: 'online', game: { name: videoInfo.title } });
             });
           });
         }
@@ -134,7 +132,7 @@ bot.on('message', message =>{
   else if(mess.startsWith(prefix + "list")){
     var format = "```";
     for(var i = 0; i < queueList.length; i++){
-      var temp = (i + 1) + ". " + queueList[i] + (i === 0 ? " **(Current Song)**" : "") + "\n";
+      var temp = (i + 1) + ". " + queueList[i] + (i === 0 ? "  (Current Song)" : "") + "\n";
       if((format + temp).length <= 2000 - 3){ //-3 because there are three ticks ```
         format += temp;
       }
@@ -157,6 +155,8 @@ bot.on('message', message =>{
       + user.counts.A
       + "\n" + "Plays: " + user.counts.plays
       + "\nPP: " + user.pp.raw + "\n" + "Rank: " + user.pp.rank + "\n" + "Country Rank: " + user.pp.countryRank + "```");
+    }).catch(error =>{
+        message.channel.send("User doesn't exist");
       });
     }
 
@@ -164,7 +164,7 @@ bot.on('message', message =>{
     else if(mess.startsWith(prefix + "define")){
         var word = args.replace(/\s+/g, '');
         dict.find(word, (error,data) =>{
-          if(error) return message.channel.send(error);
+          if(error) return message.channel.send("That word is not in my dictionary D:");
           message.channel.send("```Definition:\n\n"
           + "1. "+ data.results[0].lexicalEntries[0].entries[0].senses[0].definitions[0] + "\n\n"
           + "Pronunciation: ```");
@@ -200,6 +200,11 @@ function playMusic(id, message){
     skippers = [];
 
     dispatcher = connection.playStream(stream);
+    fetchVideoInfo(id, (err, videoInfo)=>{
+      if(err) throw new Error(err);
+        bot.user.setPresence({ status: 'online', game: { name: videoInfo.title } });
+    });
+
     dispatcher.setVolume(defaultVolume); //Defaults to 20%, personal preference to avoid ear damage
     dispatcher.on('end', ()=>{
       skipReq = 0;
