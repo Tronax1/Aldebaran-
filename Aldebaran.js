@@ -9,6 +9,7 @@ const getYoutubeID = require('get-youtube-id');
 const fetchVideoInfo = require('youtube-info');
 const osu = require('node-osu');
 const Dictionary = require('oxford-dictionary-api');
+const ypi = require('youtube-playlist-info');
 
 var config = JSON.parse(fs.readFileSync('settings.json'));
 
@@ -20,6 +21,8 @@ const osuAPIkey = config.osuAPIkey;
 const oxfordID = config.oxfordID;
 const oxfordAPIkey = config.oxfordAPIkey;
 const usernameID = config.usernameID;
+const jFluxie = config.jFluxie;
+const SerFriendZone = config.SerFriendZone;
 
 var osuApi = new osu.Api(osuAPIkey, {
     notFoundAsError: true,
@@ -73,13 +76,49 @@ bot.on('message', message =>{
         message.reply('You must be in a voice channel!');
       }
   }
+  else if (mess.startsWith(prefix + "plist")) {
+        //check if message contains list
+        if(member.voiceChannel){
+          var someId = youtube_playlist_parser(args);
+
+          if (someId) {
+
+              ypi.playlistInfo(ytAPIkey, someId, function(playlistItems) {
+
+                message.reply(" Adding to queue...");
+                playlistItems.forEach(item =>{
+                    queue.push(item.resourceId.videoId);
+                    queueList.push(item.title);
+                });
+                message.reply("Succesfully added playlist to queue");
+              });
+
+              if(!isPlaying){
+                isPlaying = true;
+                getID(args, id=>{
+                  queue.push("placeholder");
+                  playMusic(id, message);
+                  fetchVideoInfo(id, (err, videoInfo)=>{
+                    if(err) throw new Error(err);
+                  });
+                });
+              }
+          } else {
+              message.reply("Not a valid youtube playlist URL. Try again.");
+          }
+      }
+      else{
+        message.reply("You must be in a voice channel to use this command");
+      }
+
+    }
 
   //Command to skip songs
   else if(mess.startsWith(prefix + "skip")){
     if(skippers.indexOf(message.author.id) === -1){
       skippers.push(message.author.id);
       skipReq++;
-      if(skipReq >= Math.ceil(voiceChannel.members.size - 1)  / 2 || message.author.id === usernameID){ //-1 because the bot shouldn't be included in the votes
+      if(skipReq >= Math.ceil(voiceChannel.members.size - 1)  / 2 || message.author.id === usernameID || message.author.id === jFluxie || message.author.id === SerFriendZone){ //-1 because the bot shouldn't be included in the votes
         skipSong(message);
         message.reply(" Skip has been accepted, skipping song!");
       }
@@ -179,7 +218,7 @@ bot.on('message', message =>{
 
   //PM's all of the bot's commands
   else if(mess.startsWith(prefix + "commands")){
-    message.author.send("```\nList of commands\n\n!play => queues music\n!skip => skips song\n!vol => changes volume\n"
+    message.author.send("```\nList of commands\n\n!play => queues music\n!plist => queues a playlist\n!skip => skips song\n!vol => changes volume\n"
     + "!pause => pauses music\n!resume => resumes music\n!list => shows the queue\n!osu => shows osu stats of the user\n!define => defines a word thats in english```");
     }
 
@@ -187,7 +226,7 @@ bot.on('message', message =>{
 
 bot.on('ready', () => {
   console.log('I am ready!');
-  bot.user.setPresence({ status: 'online', game: { name: "Type !commands for commands" } });
+  bot.user.setPresence({ status: 'online', game: { name: 'Type !commands for commands' } });
 });
 
 function playMusic(id, message){
@@ -276,6 +315,26 @@ function searchVideo(query, callback) {
             callback(json.items[0].id.videoId);
         }
     });
+}
+
+function youtube_playlist_parser(url) {
+
+    var reg = new RegExp("[&?]list=([a-z0-9]+)", "i");
+    var match = reg.exec(url);
+
+    if (match && match[1].length > 0 && youtube_validate(url)) {
+        return match[1];
+    } else {
+        return null;
+    }
+
+}
+
+function youtube_validate(url) {
+
+    var regExp = /^(?:https?:\/\/)?(?:www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))((\w|-){11})(?:\S+)?$/;
+    return url.match(regExp) && url.match(regExp).length > 0;
+
 }
 
 bot.login(token);

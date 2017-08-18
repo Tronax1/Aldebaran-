@@ -27,6 +27,7 @@
     "request": "^2.81.0",
     "superagent": "^3.5.2",
     "youtube-info": "^1.1.1",
+    "youtube-playlist-info": "^0.1.0",
     "ytdl-core": "^0.14.4"
   }
 }
