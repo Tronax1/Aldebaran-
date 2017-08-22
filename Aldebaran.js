@@ -92,14 +92,14 @@ bot.on('message', message =>{
                 });
                 message.reply("Succesfully added playlist to queue");
               });
-
               if(!isPlaying){
                 isPlaying = true;
                 getID(args, id=>{
-                  queue.push("placeholder");
+                  //queue.push("placeholder");
                   playMusic(id, message);
                   fetchVideoInfo(id, (err, videoInfo)=>{
                     if(err) throw new Error(err);
+                    queueList.push(videoInfo.title);
                   });
                 });
               }
